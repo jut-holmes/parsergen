@@ -1,0 +1,207 @@
+
+----------------------------------------------------------------------------
+                        pgen grammar reference v1.0
+----------------------------------------------------------------------------
+
+Characters Sets:
+-------------------------
+  {charset name}   {charset ref} | [bracket expr] | [bracket range] | + | -  ;
+  
+  - {charset name} is the name of the charset to define or modify, surrounded
+    by opening and closing braces('{' and '}').  Charset names must start with
+    an alpha character [a-zA-Z] or '_', which can be followed by any number of
+    alpha characters, digits, and underscores '_'.  If the name begins with one
+    or more '_', the next character MUST be an alpha character.
+    
+  - {charset ref} is the name of a charset to add or subtract from the charset
+    being defined or modified.  The naming convections follow the above
+    paragraph. Note that character set references are NOT case sensitive.
+    
+  - [bracket expr] is any set of alpha, digit([0-9]), underscore('_'),
+    escaped('\n'), hex('\x0a'), and unsigned('\u123') character values. Note
+    that bracket ranges may exist within bracket expressions.
+    
+  - [bracket range] is any bracket expression which contains one or more range
+    specifiers. A range specifier is a character value(see above paragraph)
+    with an interceding '-' character.  Examples are the digit bracket
+    expression [0-9], alpha expression [a-zA-Z], and alpha expression with
+    underscore and space [a-zA-Z_ ].
+    
+  - '+' changes the character set mode to additive.  Note that this is the
+    default mode, so that an expression of the form
+    "{newchars}  [a] [b] \n {upper}" would include all the values from the
+    right hand expressions into character set {newchars}.
+    
+  - '-' changes the character set mode to subtractive.  Any character
+    references made after the '-'(until a '+' is encountered) will subtract
+    their values from the character set.
+    
+  - Examples:
+      {alpha}     [a-zA-Z];
+      {digit}     [0-9];
+      {hexdigit}  [a-fA-F0-9];
+      {notnl}     [\x00-\xff] - \n;
+      {notnl}     [^\n];
+      {notws}     [\x00-\xff] - {whitespace};
+      
+  - Default Single Character Sets:
+      Name        Value
+      ------------------
+      {HT}        9
+      {LF}        10
+      {VT}        11
+      {FF}        12
+      {CR}        13
+      {NL}        10 - Same as {LF}
+      {Space}     32
+      {NBSP}      160 - Non-breaking space character
+      
+  - Default Multiple Character Sets:
+      Name              Values
+      ------------------
+      {NotNL}           [\x00-\xff] - {NL}
+      {Digit}           [0-9]
+      {NotDigit}        [^0-9]
+      {Alpha}           [a-zA-Z]
+      {Upper}           [A-Z]
+      {Lower}           [a-z]
+      {Alphanum}        [a-zA-Z0-9]
+      {Hexdigit}        [a-fA-F0-9]
+      {Printable}       [\u033-\u126] + {NBSP}
+      {Whitespace}      [\u009-\u013] + {Space} + {NBSP} - {NL}
+      {WhitespaceNL}    {Whitespace} + {NL}
+      {NotWhitespaceNL} Anything but {WhitespaceNL}
+      {Word}            [a-zA-Z0-9_]
+      {NotWord}         [^a-zA-Z0-9_]
+
+
+Terminals:
+-------------------------
+  TERM_NAME   Regex;
+  
+  - TERM_NAME is the terminal name to define.  A terminal name can be a regular
+    name of the form [_]*[A-Z][a-zA-Z0-9_]*, or a quoted literal i.e. '::='
+  - Regex is a regular expression of the traditional form.
+  - A Terminal name followed immediately by the semicolon ';' with no regex
+    in-between, will define the terminal as a 'virtual terminal'.  That is, the
+    terminal will have an id assigned to it so it can be referenced in the
+    grammar, but it will have no associated states in the lexer.
+ 
+ 
+Regular Expressions:
+-------------------------
+ Some notes about the pgen implementation are discussed here.
+  - String literals of the form "this is some text" are allowed, but not inside
+    bracket expressions.
+  - Whitespace outside of bracket expressions is ignored.
+  - Single characters are allowed to be unescaped only if they are NOT one of
+    ';' '|' '+' '.' '^' '\' '-' '?' '*' '[' '\' ']' '(' ')' '{' '}' '\'
+  - Escaped characters are of the form \<character> where all characters except
+    \r,\n,\t,\b match themselves.  i.e. a backslash is specified as \\
+  - Some character sets have shortcuts as escaped characters:
+     \w  -  {Word}
+     \W  -  {NotWord}
+     \s  -  {WhitespaceNL}
+     \S  -  {NotWhitespaceNL}
+     \d  -  {Digit}
+     \D  -  {NotDigit}
+  - Examples:
+    NAME      "jason";
+    NUMBER    [0-9]+;
+    HEXCHAR   \\x{HexChar}{HexChar};
+
+
+Terminal Actions:
+-------------------------
+  accept
+    - Accept the token.  This is the default if no other actions are specified.
+    
+  ignore
+    - Ignore the token.  Do not return the token to the parser.
+    
+  discard
+    - Same as ignore.
+    
+  goto STATE_NAME
+    - Go to the specified lexer state.  Do not store anything on the stack.
+    
+  push STATE_NAME
+    - Push the current lexer state onto the stack and move to the new state.
+    
+  pop
+    - Pop a lexer state from the stack and move to it.
+
+  concat
+    - Append the token's lexeme to the last token's lexeme.
+    
+  preserve
+    - Don't consume the token from the input stream, do not use with "ignore"
+    
+  short
+    - Take the shortest match
+  
+  
+Keywords:
+-------------------------
+  %start start_non_terminal
+    - Use start_non_terminal as the start state.  Note that the surrounding
+      '<' and '>' are optional.
+      
+  %state STATE_NAME
+    - Specifies the lexer state to add new terminals to.
+    - Terminals specified in productions in their literal form i.e. '%'
+      will be added to the specified state if they are not explicitly
+      declared in the grammar.
+    - STATE_NAME is one or more optional '_', followed by an upper or lowercase
+      alpha character, followed by zero or more upper or lowercase alpha
+      characters or digits.
+      
+  %param PARAMETERS ...
+    - use PARAMETERS as if it had been entered from the command line.
+      Note that only command line parameters for file output and testing
+      are accepted, all others will be ignored.  This means that specifying
+      '-d' as an embedded parameter will do nothing, but specifying '-op'
+      will output the file.  See the usage help for the valid command line
+      parameters.
+      
+  %left TERMINAL_NAME ...
+    - specifies that the terminal name(or names) will be assigned the current
+      precedence level, but use left associativity.  This keyword is used when
+      specifying operator precedence grammars.
+      
+  %right TERMINAL_NAME ...
+    - specifies that the terminal name(or names) will be assigned the current
+      precedence level, but use right associativity.  This keyword is used when
+      specifying operator precedence grammars.
+
+  %nonassoc TERMINAL_NAME ...
+    - specifies that the terminal name(or names) will be assigned the current
+      precedence level, but use no associativity.  This keyword is used when
+      specifying operator precedence grammars.
+
+      
+Non Terminals(Rules):
+-------------------------
+  <non-terminal>  :  NAME NUM %prec UMINUS | HEX <other_nonterminal> | '%' | ;
+  
+  - <non-terminal> is the non-terminal to define.  A non-terminal begins and
+    ends with a less-than('<') and greater-than('>') symbol, repectively.  The
+    non-terminal name has the form \<[_]*[a-zA-Z][a-zA-Z0-9_]*\>
+    
+  - The assignment operator(the next operator after the non-terminal name), can
+    be ':', '::=', or '-->'.
+    
+  - Terminals can be specified in their literal form i.e. '%'.  Terminals
+    specified in this form will be added to the current lexer state(or the
+    start state if not set) if they are not defined elsewhere.
+  
+  - A rule production is empty if nothing is specified between the last
+    instance of a '|' and the end of the terminal(the semi-colon ';').
+    
+  - Precedence is defined for a production rule instance by using the keyword
+    '%prec' at some point in the rule instance definition.  The argument to
+    '%prec' is the name of a terminal whose precedence you want to assign
+    to the rule.  The default precedence for a rule is set by the first
+    terminal encountered in the rule definition. Specifying '%prec' more than
+    once for a given instance will override the current precedence.
+

@@ -1,0 +1,92 @@
+pre 1.00 release
+----------------
+
+Todo:
+* - skip empty terminals
+* - shift/reduce error reporting
+* - add character sets to grammar i.e. {alpha}
+* - combine dfa states
+* - add hashing to dfa
+* - dfa construction: only calculate get_move once for each node(ahead of time)
+* - convert dfa construction to vectors instead of maps(if possible)
+* - rewrite lr algorithm to use alternate algorithm
+* - combine lr cores
+* - propagate lookaheads and see if they are still correct- add hashing to lr construction
+* - add operator precedence
+* - add explicit precedence/associtivity declaration for production rules
+* -- improve regex parsing some more
+* - use parser to build parser for grammar
+
+* - make charset names non case-sensitive
+* - make state names non case-sensitive
+
+* - define literal symbols that are currently undefined
+* - check for undefined symbols(not-literal terminals that aren't defined and non-terminals that aren't defined)
+
+* - build rule name strings
+
+* - combine symbols nfa's for each nfa state
+*  - skip terminals with no nfa
+
+* - build accept states(use instance not id)
+*  - add id to action table to return to parser
+  
+X - change dfa building to use recursive algorithm
+* - change lalr algorithm to use new symbol table
+ 
+ * - add .c rule switch statement output file option
+ * - add skeleton grammar output(expressions, html, .ini file, command-line, ansi c, xml, etc...)
+ 
+ * - output small tables
+ * - assign precedences to rules
+
+1.00
+-------
+
+Todo
+----
+X - add lr1 building option
+* - option to build non case-sensitive parsers for string literals("asdf")
+* - allow options to be embedded in grammar file
+* - use parser to parse command line args
+* - allow a single filename command line argument.  if the file specified contains embedded
+    arguments, use them.  otherwise, compile the grammar and output a .dat file of the same name.
+
+Bug fixes
+--------------
+9/18/04 JH - Fixed bug with syntax error in use of sscanf(oops)
+9/20/04 JH - Added check for undefined states that was causing problems in the DFA
+9/20/04 JH - Changed test_grammar() to use printf("%c") instead of putch()
+9/20/04 JH - Changed test_grammar() to use special parser_get_rule() function
+
+1.01
+-------
+
+Features
+--------
+ - Added command line switches to not include dfa,lalr,and symbols in output file
+ - Split runtime engine(parser.h) into separate header and .cpp files
+ - Added command line switch (-oe) to output runtime parse engine
+
+Todo
+----
+ * - Test regex {} range expressions
+ * - Check symbol/production count after loading file
+ * - Test empty regex catch
+ * - Split error output onto different line so it shows up in the VS task window
+     
+Bug fixes
+---------
+
+1.02
+----
+
+Features
+--------
+ - Replaced most of STL objects with custom templates, vectors are still in STL
+ - Freed up memory during DFA and LALR construction
+ 
+Bug fixes
+---------
+ - Fixed crash on printf with reduce/reduce conflict reporting
+ 

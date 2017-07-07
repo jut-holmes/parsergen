@@ -1,0 +1,27 @@
+usage: pgen [<grammar file>] [-opt1 [<argument1>]] ...
+  <grammar file> :
+      compile file and output with a .dat extension
+  -it : compile input grammar file
+  -ig : read compiled grammar file
+  -og : save compiled grammar file
+  -oh : generate header file <header file>
+  -oc : generate .c switch statement <switch file>
+  -op : generate .c array <array file>
+  -oe : output parse engine (parser.h and parser.cpp)
+  -ore: output regex-style parse engine (regex.h and regex.cpp)
+  -ot : save grammar template to a file
+  -nd : don't save dfa tables
+  -nl : don't save lalr tables
+  -ns : don't save symbol information
+  -dc : don't compress grammar output file
+  -v : verbose mode
+  -ss : show grammar symbols
+  -sc : show configuration tables
+  -sa : show action tables
+  -nc : compile string literals as non case-sensitive
+  -cs : compile string literals as case-sensitive(default)
+  -t : run compiled parser(and lexer) on <test file>
+  -td: run compiled lexer(only) on <test file>
+  -tr: test compiled lexer as multi-regex matcher
+  -d : display list of built-in grammar templates
+  -hf : display grammar format help

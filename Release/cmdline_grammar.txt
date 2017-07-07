@@ -1,0 +1,71 @@
+
+//
+// this is the commandline parsing grammar for pgen
+// v1.0
+//
+
+{filechar}	{Alphanum} + [:\\\/._];
+{qfilechar}	{Alphanum} + [:\\\/._ \t];
+
+%start grammar;
+%state START;
+%param -oh cmdline_grammar.h -op cmdline_tables.cpp;
+
+FILENAME	({alpha}\:(\\)?|\\\\)?{filechar}+|\"({alpha}\:(\\)?|\\\\)?{qfilechar}+\";
+WS			{Whitespace}+;	ignore;
+
+<grammar>	: FILENAME <cmdline>
+			;
+
+<cmdline> : FILENAME	// single filename
+		  | <switchexpr> // parameter list
+		  |	// no parameters
+		  ;
+
+<switchexpr>	: <switchexpr> <switch>
+				| <switch>
+				;
+				
+<switch>	:	<inswitch>
+			|	<outswitch>
+			|	<showswitch>
+			|	<helpswitch>
+			|	<outflags>
+			|	<testswitch>
+			|	'-v'
+			|	'-d'
+			|	'-nc'
+			|	'-cs'
+			;
+			
+<inswitch>	:	'-it' FILENAME
+			|	'-ig' FILENAME
+			;
+
+<outswitch>	:	'-og' FILENAME
+			|	'-oh' FILENAME
+			|	'-oc' FILENAME
+			|	'-op' FILENAME
+			|	'-ot' FILENAME
+			|	'-oe' FILENAME
+			|	'-ore' FILENAME
+			;
+
+<outflags>	:	'-nd'
+			|	'-nl'
+			|	'-ns'
+			|	'-dc'
+			;
+
+<testswitch>	:	'-t' FILENAME
+				|	'-td' FILENAME
+				;
+				
+<showswitch>	:	'-ss'
+				|	'-sc'
+				|	'-sa'
+				;
+				
+<helpswitch>	:	'-h'
+				|	'-hf'
+				;

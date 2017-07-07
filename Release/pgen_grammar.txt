@@ -1,0 +1,382 @@
+
+//
+// pgen grammar v1.0
+//
+// this is the release version of the grammar
+//
+
+{CommentCh} [\x00-\xff];
+{CharLiteralCh} {Printable} - ['] + {Whitespace} - {CR} - {LF};
+{CharsetBrCh} {Printable} + [ ] - [\\\]] - {CR} - {LF};
+{EscCharsetBrCh} {Printable} - {Whitespace} - {CR} - {LF};
+{CharsetBrChTwo} {Printable} + {Space} + {Whitespace} - {CR} - {LF} - [\'\\];
+{EscCharsetBrChTwo} {Printable} - {Whitespace} - {CR} - {LF};
+{StrLiteralCh} {Printable} + {Whitespace} - {CR} - {LF} - [\"] + [ ];
+{WS}		{Whitespace} + {CR} + {LF};
+{RegexWS}	{Whitespace} - {CR} - {LF};
+{HexChar}	[a-zA-Z0-9];
+{OtherChar}	{Printable} - {Whitespace};
+{RegexCh1}	{Printable} - {Whitespace} - {CR} - {LF} - [;|+.^\-?*[\](){}\\];
+{Bracket}	[(){}[\]];
+{ParamsChar} [\x00-\xff] - [;];
+
+%state START;
+%param -oh pgen_grammar.h -og pgen_grammar.dat -v;
+
+// normal tokens
+GOTO		"goto";						accept; goto READ_STATE_NAME;
+PUSH		"push";						accept; goto READ_STATE_NAME;
+POP			"pop";
+IGNORE		"ignore";
+DISCARD		"discard";
+CONCAT		"concat";
+ACCEPT		"accept";
+PRESERVE	"preserve";
+SHORT		"short";
+TERM		[_]*[A-Z][a-zA-Z0-9_]*|\'({CharsetBrChTwo}|\\{EscCharsetBrChTwo})+\';		accept; goto REGEX;
+NONTERM		\<[_]*[a-zA-Z][a-zA-Z0-9_]*\>;												accept; goto NONTERM;
+CHARSET		\{[_]*[a-zA-Z][a-zA-Z0-9_]*\};												accept; goto CHARSET;
+WS			{WS}+;							ignore;
+START		"%start";					accept; goto READ_START_SYMBOL;
+STATE		"%state";					accept;	goto READ_STATE_NAME;
+RIGHT		"%right";					accept; goto READ_PRECEDENCE;
+LEFT		"%left";					accept; goto READ_PRECEDENCE;
+NONASSOC	"%nonassoc";				accept; goto READ_PRECEDENCE;
+PARAM		"%param";					accept; push READ_PARAM;
+
+// comments
+LINECOMMENT		\/\/{NotNL}*;					ignore;
+BLOCKCOMMENT	\/\*;							ignore; push INNER_COMMENT;
+
+// regex grammar
+%state REGEX;
+ORDCHAR		{RegexCh1};
+QUOTEDCHAR	\\([nrtbvfe\?\\\+\-\*\']|{Bracket});
+OCTCHAR		\\[0-7][0-7][0-7];
+HEXCHAR		\\x{HexChar}{HexChar};
+CTLCHAR		\\c[C];
+USCHAR		\\u{HexChar}{HexChar}{HexChar}{HexChar};
+BSCHAR		\\{OtherChar};
+CHARSETREF	\{[a-zA-Z_][a-zA-Z0-9_]*\};
+RANGEREF	\{[0-9]+(\,|\,[0-9]+)?\};
+STRLITERAL	\"({StrLiteralCh}|\\\")*\";
+'['			"[";				accept;		goto BRACKET_EXPRESSION;
+NL			"\r\n"|"\n";
+WS			{RegexWS}+;			ignore;
+';'			";";				accept;		goto START;
+
+// bracket expression grammar
+%state		BRACKET_EXPRESSION;
+ORDCHAR		{RegexCh1};
+QUOTEDCHAR	\\( [nrtbvfe\?\\\+\-\*\'] | {Bracket} );
+OCTCHAR		\\[0-7][0-7][0-7];
+HEXCHAR		\\x{HexChar}{HexChar};
+CTLCHAR		\\c[C];
+USCHAR		\\u{HexChar}{HexChar}{HexChar}{HexChar};
+BSCHAR		\\{OtherChar};
+SPACE		" ";
+']'			"]";				accept;		goto REGEX;
+'[:'		"[:";				accept;		goto CLASSNAME;
+
+%state INNER_COMMENT;
+ENDCMNT		"\*\/";				ignore; pop;
+INNERCMNT	{CommentCh};		ignore;
+
+// read start symbol
+%state READ_START_SYMBOL;
+START_SYMBOL	(\<)?[_]*[a-zA-Z][a-zA-Z0-9_]*(\>)?;			accept;	goto START;
+WS				{WS}+;												ignore;
+
+%state READ_PARAM;
+';'			";";			accept; pop;
+PARAMS		{ParamsChar}+;	accept;
+
+// read state name
+%state READ_STATE_NAME;
+STATE_NAME		[a-zA-Z][a-zA-Z0-9_]*;			accept; goto START;
+WS				{WS}+;							ignore;
+
+// read token name
+%state READ_PRECEDENCE;
+TOKENNAME	[_]*[A-Z][a-zA-Z0-9_]*|\'({CharsetBrChTwo}|\\{EscCharsetBrChTwo})+\';
+';'			";";						accept; goto START;
+WS			{WS}+;						ignore;
+
+// nonterm lexer
+%state NONTERM;
+';'			";";				accept;		goto START;
+TERM		[_]*[A-Z][a-zA-Z0-9_]*|\'({CharsetBrChTwo}|\\{EscCharsetBrChTwo})+\';
+NONTERM		\<[_]*[a-zA-Z][a-zA-Z0-9_]*\>;
+'|'			"|";
+WS			{WS}+;				ignore;
+ASSIGN		":"|"::="|"-->";
+PREC		"%prec";
+LINECOMMENT		\/\/{NotNL}*;	ignore;
+BLOCKCOMMENT	\/\*;			ignore; push INNER_COMMENT;
+
+// classname
+%state CLASSNAME;
+CLASSNAME	[a-zA-Z_][a-zA-Z0-9_]+;			accept;		goto REGEX;
+
+// charset
+%state CHARSET;
+';'			";";							accept; goto START;
+CHARSET		\{[_]*[a-zA-Z][a-zA-Z0-9_]*\};
+CHARLITERAL \'{CharLiteralCh}\';
+CHARRANGE	\[({CharsetBrCh}|\\{EscCharsetBrCh})+\];
+HEXCHAR		\\x{HexChar}{HexChar};
+CHARUVAL	\\u{Digit}{Digit}{Digit};
+ESCCHAR		\\{EscCharsetBrCh};
+WS			{WS}+;							ignore;
+
+%start grammar;
+%state START;	// add auto-tokens to start state
+
+// start rule
+<grammar>	: <statements>
+			;
+
+// terminal/charset definitions
+<statements>	: <statements> <statement>
+				| <statement>
+				;
+
+<statement>	: <statementexpr> ';'
+			;
+
+<statementexpr>	: <nontermexpr>
+				| <termexpr>
+				| <keyword>
+				| <charset>
+				| <action>
+				;
+
+//
+// regex definition
+//
+%state REGEX;
+<regex>	:										<EREbranch>
+		| <regex>			<EREAlternate>		<EREbranch>
+		;
+
+<EREAlternate>	: '|'
+				| NL
+				;
+
+<EREbranch>		: <EREbranch>	<EREexpression>
+				|				<EREexpression>
+				;
+
+<EREexpression>	: <onecharacterERE>
+				| '^'
+				| '$'
+				| '('	<regex>	')'
+				| <EREexpression>	<EREduplsymbol>
+				;
+
+<onecharacterERE>	: <collelem>
+					| '.'
+					| <bracketExpression>
+					| CHARSETREF
+					| STRLITERAL
+					;
+
+<EREduplsymbol>		: '*'
+					| '+'
+					| '?'
+					| RANGEREF
+					;
+
+%state BRACKET_EXPRESSION;
+<bracketExpression>	: <brackExprStart> <matchinglist>	']'
+					| <brackExprStart> <nonmatchinglist>	']'
+					;
+					
+<brackExprStart>	: '['
+					;
+					
+<matchinglist>		:		<bracketList>
+					;
+					
+<nonmatchinglist>	:	'^'	<bracketList>
+					;
+					
+<bracketList>		:	<bracketList>		<expressionTerm>
+					|	<expressionTerm>
+					;
+					
+<expressionTerm>	:		<singleExpression>
+					|		<rangeExpression>
+					|		SPACE
+					;
+					
+<singleExpression>	:		<endRange>
+					|		<characterClass>
+					|		<equivalenceClass>
+					;
+					
+<rangeExpression>	:		<startRange> <endRange>
+					|		<startRange> '-'
+					;
+					
+<startRange>		:		<collelem>   '-'
+					;
+					
+<endRange>			:		<collelem>
+					|		<collatingSymbol>
+					;
+					
+<collatingSymbol>	:	'[.'	<collelem>	'.]'
+					|	'[.'	<metachar>	'.]'
+					;
+					
+<equivalenceClass>	:	'[='	<collelem>	'=]'
+					;
+					
+<characterClass>	:	'[:'	CLASSNAME	':]'
+					;
+
+<collelem>			:		ORDCHAR
+					|		QUOTEDCHAR
+					|		OCTCHAR
+					|		HEXCHAR
+					|		CTLCHAR
+					|		USCHAR
+					|		BSCHAR
+					;
+
+<metachar>			:		'^'
+					|		'-'
+					|		']'
+					;
+
+//
+// terminal definition
+//
+<termexpr>	:	<termstart> <regex>
+			;
+
+// virtual terminals have no regex expression
+<termexpr>	: <termstart>
+			;
+
+<termstart>	: TERM
+			;
+			
+//
+// non-terminal definition
+//
+%state NONTERM;
+<nontermexpr>	: <nontermstart> <productions>
+				;
+				
+<nontermstart>	: NONTERM ASSIGN
+				;
+				
+<productions>	:	<productions> <prodalternate> <productionexpr>
+				| <productionexpr>
+				;
+				
+<prodalternate>	: '|'
+				;
+				
+<productionexpr> : <production> <optprec>
+				|
+				;
+				
+<production>	: <production> <nament>
+				| <nament>
+				;
+				
+<optprec>		: PREC TERM
+				|
+				;
+				
+<nament>		: TERM
+				| NONTERM
+				;
+
+//
+// action
+//
+%state START;
+<action> : GOTO STATE_NAME
+		 | PUSH STATE_NAME
+		 | POP
+		 | DISCARD
+		 | CONCAT
+		 | ACCEPT
+		 | PRESERVE
+		 | SHORT
+		 | IGNORE // same as discard
+		 ;
+
+//
+// keyword
+//
+<keyword>	: START START_SYMBOL
+			| STATE STATE_NAME
+			| PARAM PARAMS
+			| <kwleft>
+			| <kwright>
+			| <kwnonassoc>
+			;
+
+//
+// keyword "left"
+//
+<kwleft>		: <kwleftstart> <kwleftexpr>
+				;
+<kwleftstart>	: LEFT				
+				;
+				
+<kwleftexpr>	: <kwleftexpr> TOKENNAME
+				| TOKENNAME	
+				;
+
+//
+// keyword "right"
+//
+<kwright>		: <kwrightstart> <kwrightexpr>
+				;
+<kwrightstart>	: RIGHT
+				;				
+
+<kwrightexpr>	: <kwrightexpr> TOKENNAME
+				| TOKENNAME
+				;
+
+//
+// keyword "nonassoc"
+//
+<kwnonassoc>		: <kwnonassocstart> <kwnonassocexpr>
+					;
+<kwnonassocstart>	: NONASSOC
+					;
+					
+<kwnonassocexpr>	: <kwnonassocexpr> TOKENNAME
+					| TOKENNAME
+					;
+
+//
+// charset
+//
+%state CHARSET;
+<charset>			: <charsetstart> <charsetexpr>
+					;
+<charsetstart>		: CHARSET
+					;
+					
+<charsetexpr>		: <charsetexpr> <charsetitem>
+					| <charsetitem>
+					;
+					
+<charsetitem>		: CHARSET
+					| ESCCHAR
+					| '+'
+					| '-'
+					| CHARRANGE
+					| HEXCHAR
+					| CHARUVAL
+					| CHARLITERAL
+					;

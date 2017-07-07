@@ -1,0 +1,31 @@
+
+//
+// This is a precedence operator grammar
+// (c)2004 Justin Holmes
+//
+
+%state START;
+
+NUMBER	[0-9]+;
+WS		{Whitespacenl}+;	ignore;
+'*'		"*";
+'/'		"/";
+'+'		"+";
+'-'		"-";
+UMINUS;
+
+%left '+' '-';
+%left '*' '/';
+%right UMINUS;
+
+<Grammar>	: <Expression>
+			;
+			
+<Expression>	: <Expression> '+' <Expression>
+				| <Expression> '-' <Expression>
+				| <Expression> '*' <Expression>
+				| <Expression> '/' <Expression>
+				| '(' <Expression> ')'
+				| '-' <Expression>	%prec UMINUS
+				| NUMBER
+				;
